@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2/promise');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+/* 
+// ==================== DB CONFIGURATION COMMENTED OUT FOR DEMO ====================
+const mysql = require('mysql2/promise');
 const DB_NAME = process.env.DB_NAME || 'labdb';
 const DB_CONNECT_RETRIES = Number(process.env.DB_CONNECT_RETRIES || 30);
 const DB_CONNECT_RETRY_DELAY_MS = Number(process.env.DB_CONNECT_RETRY_DELAY_MS || 2000);
@@ -75,8 +77,15 @@ async function initDB() {
     queueLimit: 0
   });
 }
+// ================================================================================
+*/
 
-// ========== ENTER BUTTON ==========
+// Root route
+app.get('/', (req, res) => {
+  res.send('Backend API running successfully on ECS Fargate!');
+});
+
+// ========== ENTER BUTTON (MOCKED) ==========
 app.post('/api/enter', async (req, res) => {
   try {
     const { input_text } = req.body;
@@ -85,13 +94,10 @@ app.post('/api/enter', async (req, res) => {
       return res.status(400).json({ error: 'Text cannot be empty' });
     }
 
-    const query = 'INSERT INTO entries (text, created_at) VALUES (?, NOW())';
-    const [result] = await pool.query(query, [input_text.trim()]);
-
     res.status(200).json({ 
       success: true, 
-      id: result.insertId,
-      message: 'Entry saved successfully' 
+      id: 1,
+      message: 'Entry saved successfully (Demo Mode)' 
     });
   } catch (err) {
     console.error('Error saving entry:', err);
@@ -99,53 +105,23 @@ app.post('/api/enter', async (req, res) => {
   }
 });
 
-// ========== LIST BUTTON ==========
+// ========== LIST BUTTON (MOCKED) ==========
 app.get('/api/list', async (req, res) => {
-  try {
-    const query = 'SELECT text, created_at FROM entries ORDER BY created_at DESC';
-    const [rows] = await pool.query(query);
-
-    if (rows.length === 0) {
-      return res.status(200).json({ logs: 'No entries found' });
-    }
-
-    const logs = rows.map(row => {
-      const date = new Date(row.created_at);
-      const formattedDate = date.toLocaleString();
-      return `${row.text} - Logged on: ${formattedDate}`;
-    }).join('\n\n');
-
-    res.status(200).json({ logs });
-  } catch (err) {
-    console.error('Error fetching entries:', err);
-    res.status(500).json({ error: 'Failed to fetch entries' });
-  }
+  res.status(200).json({ logs: 'Demo Log Entry - Logged on: ' + new Date().toLocaleString() });
 });
 
 // Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'OK', timestamp: new Date() });
-  } catch (err) {
-    console.error('Health check failed:', err.message);
-    res.status(503).json({ status: 'ERROR', error: 'Database unavailable' });
-  }
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date() });
 });
 
 const PORT = process.env.PORT || 5001;
 
-async function startServer() {
-  try {
-    await initDB();
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Backend running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error('Database initialization failed after retries:', err.message);
-    process.exit(1);
-  }
+function startServer() {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend running on port ${PORT}`);
+  });
 }
 
 startServer();
-//adding comment to check CI/CD pipeline
+// adding comment to check CI/CD pipeline
